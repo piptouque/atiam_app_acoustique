@@ -5,7 +5,7 @@ from typing import List, Callable, Union
 
 
 class BarShape:
-    def __init__(self, l: float, h: float, b: float, s: Union[float, Callable[float]]):
+    def __init__(self, l: float, h: float, b: float, s: Union[float, Callable[[float], float]]):
         self.l = l
         self.h = h
         self.b = b
@@ -110,6 +110,12 @@ class Material:
 
 
 class Constraint:
+    couples = {
+        ('free', 'free'): 'free-free',
+        ('simply_supported', 'simply_supported'): 'supported-supported',
+        ('clamped', 'free'): 'free-clamped'
+    }
+
     def __init__(self, x: float, name: str):
         self.x = x
         self.name = name
