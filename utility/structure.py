@@ -42,7 +42,8 @@ class Material:
     rhos = {
         'steel': 8010,
         'wood': 300,
-        'brass': 8960
+        'brass': 8960,
+        'air': 1.204,  # à 20°C, à la pression atmosphérique usuelle.
     }
     """
     Modules d'Young des matériaux du glockenspiel en $Pa$.
@@ -83,7 +84,7 @@ class Material:
     }
     """
     """
-    eta = {
+    etas = {
         'air': 1.55 * 10 ** -5
     }
     """
@@ -156,9 +157,10 @@ class Mallet:
 
 
 class StringSetting:
-    def __init__(self, tau: float, boundaries: str):
+    def __init__(self, tau: float, boundaries: str, env: str):
         self.tau = tau
         self.boundaries = boundaries
+        self.env = env
 
 
 class StringPinch:
@@ -189,13 +191,23 @@ class String:
         #
         boundaries = self.setting.boundaries
         self.k_n = None
-        self.w_n = None
+        self.omega_n = None
         self.coefs = [lambda n: 0] * 4
         if boundaries == 'simply-supported':
             self.k_n = lambda n: np.pi * n / self.shape.l
-            self.w_n = lambda n: self.c * \
-                self.k_n(n) * np.sqrt(1 + (n * np.pi /
-                                           (self.kappa * self.shape.l))**2)
+            # self.omega_n = lambda n: self.c * \ self.k_n(n) * np.sqrt(1 + (n * np.pi / (self.kappa * self.shape.l))**2)
+            # shitty approximation of R the mecanical resistance in both the low and high frequency domains.
+            #
+
+            def r(n):
+                # first-ordre approximation on omega_n
+                omega = n * np.pi * self.c / self.shape.l
+                eta = 2000 * Material.etas[self.setting.env]
+                return 2 * np.pi * (eta / (1 + omega**2) + self.shape.d * np.sqrt(omega/2 * eta * Material.rhos[self.setting.env]))
+            # Let's be in the low frequency domain and say that:
+            # We dismiss the term on Y_ch
+            self.omega_n = lambda n: self.k_n(n) * self.c * (1 + self.k_n(n)**2/(
+                2*self.kappa**2) - 1j * r(n) * self.shape.l / (2 * np.pi * self.shape.s * self.mat.rho * self.c * n))
 
             def d_n(n): return 2 * self.pinch.h * self.shape.l ** 2 * np.sin(self.k_n(n) *
                                                                              self.pinch.x_p) / ((n * np.pi) ** 2 * self.pinch.x_p * (self.shape.l - self.pinch.x_p))
@@ -204,7 +216,7 @@ class String:
             return NotImplementedError()
         self.q_n = lambda n: np.sqrt(self.k_n(n)**2 + self.kappa**2)
         # no phase, fight me.
-        self.y_n = lambda n: lambda x, t: np.cos(self.w_n(n)*t) \
+        self.y_n = lambda n: lambda x, t: np.cos(self.omega_n(n)*t) \
             * ((self.coefs[0](n)*np.cosh(self.q_n(n)*x)
                 + self.coefs[1](n)*np.sinh(self.q_n(n)*x)
                 + self.coefs[2](n)*np.cos(self.k_n(n)*x)

@@ -26,7 +26,6 @@ def get_signal_from_modes(y_n: Callable[[int], Callable[[float, float], float]],
     vs = np.zeros((nb_modes, n))
     for i in range(1, nb_modes):
         vs[i] = y_n(i)(x_0, ts)
-    print(vs.shape)
     s = np.sum(vs, axis=0)
     return s
 
