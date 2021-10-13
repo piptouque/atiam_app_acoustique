@@ -19,12 +19,14 @@ class BarShape:
     def is_section_constant(self) -> bool:
         return not callable(self.s)
 
+
 class CylinderShape:
     def __init__(self, l: float, d: float):
         self.l = l
         self.d = d
         self.s = np.pi * d**2/4
         self.i = np.pi * d**4/64
+
 
 class MalletShape:
     def __init__(self, radius: float):
@@ -39,16 +41,17 @@ class Material:
     """
     rhos = {
         'steel': 8010,
-        'wood': 300
+        'wood': 300,
+        'brass': 8960
     }
     """
-    Modules d'Young des matériaux du glockenspiel en $GPa$.
+    Modules d'Young des matériaux du glockenspiel en $Pa$.
     """
     es = {
-        'steel': 203,
-        'brass': 90,
-        'wood': 10,
-        'rubber': 0.01
+        'steel': 203 * 10**9,
+        'brass': 90 * 10**9,
+        'wood': 10 * 10**9,
+        'rubber': 0.01 * 10**9
     }
     """
     Coefficients de Poisson $\nu$, sans unité.
@@ -66,8 +69,9 @@ class Material:
     Coefficients de dilatation thermique $\alpha$, en $K^{-1}$
     """
     alphas = {
-        'steel': 8 * 10 ^ -6,
-        'wood': 4 * 10 ^ -6
+        'steel': 8 * 10 ** -6,
+        'wood': 4 * 10 ** -6,
+        'brass': 6 * 10 ** -6,  #  à vérifier
     }
     """
     Chaleurs spécifiques à déformation constante, en $J.kg^{-1}.K$
@@ -75,13 +79,20 @@ class Material:
     cs = {
         'steel': 500,
         'wood': 2000,
+        'brass': 400  #  à vérifier
+    }
+    """
+    """
+    eta = {
+        'air': 1.55 * 10 ** -5
     }
     """
     Conductivités thermiques, en $W.m^{-1}.K^{-1}$
     """
     kappas = {
         'steel': 25,
-        'wood': 0.2
+        'wood': 0.2,
+        'brass': 20,  #  à vérifier
     }
     """[summary]
     Rayon de courbure de la tête sphérique de la baguette, en m.
@@ -90,7 +101,8 @@ class Material:
     rs = {
         'steel': 10,
         'wood': 1,
-        'rubber': 0.2
+        'rubber': 0.2,
+        'brass': 20  #  à vérifier
     }
     # endregion
 
@@ -142,22 +154,25 @@ class Mallet:
         # On néglige la masse du manche devant celui de la tête.
         return self.mat.rho * 1.25 * np.pi * np.power(self.shape.r, 3)
 
+
 class StringSetting:
     def __init__(self, tau: float, boundaries: str):
         self.tau = tau
         self.boundaries = boundaries
+
 
 class StringPinch:
     def __init__(self, x_p: float, h: float):
         self.x_p = x_p
         self.h = h
 
+
 class String:
     def __init__(self, shape: CylinderShape, mat: Material):
         self.shape = shape
         self.mat = mat
 
-    def compute_transversal_eigenmodes(self, setting: StringSetting, pinch: StringPinch) ->  Callable[[int], Callable[[float, float], float]]:
+    def compute_transversal_eigenmodes(self, setting: StringSetting, pinch: StringPinch) -> Callable[[int], Callable[[float, float], float]]:
         """[summary]
 
         Args:
@@ -178,12 +193,20 @@ class String:
         self.coefs = [lambda n: 0] * 4
         if boundaries == 'simply-supported':
             self.k_n = lambda n: np.pi * n / self.shape.l
-            self.w_n = lambda n: self.c * self.k_n * np.sqrt(1 + (n * np.pi / (self.kappa * self.shape.l))**2)
-            d_n = lambda n: 2 * self.pinch.h * self.shape.l ** 2 * np.sin(self.k_n(n) * self.pinch.x_p) / ((n * np.pi) ** 2 * self.pinch.x_p * (self.shape.l - self.pinch.x_p))
-            self.coefs[3]= d_n
+            self.w_n = lambda n: self.c * \
+                self.k_n(n) * np.sqrt(1 + (n * np.pi /
+                                           (self.kappa * self.shape.l))**2)
+
+            def d_n(n): return 2 * self.pinch.h * self.shape.l ** 2 * np.sin(self.k_n(n) *
+                                                                             self.pinch.x_p) / ((n * np.pi) ** 2 * self.pinch.x_p * (self.shape.l - self.pinch.x_p))
+            self.coefs[3] = d_n
         else:
             return NotImplementedError()
-        self.q_n = lambda n: np.sqrt(k_n(n)**2 + self.kappa**2)
+        self.q_n = lambda n: np.sqrt(self.k_n(n)**2 + self.kappa**2)
         # no phase, fight me.
-        self.y_n = lambda n: lambda x, t: np.cos(self.w_n(n)*t) * (self.coefs[0](n)*np.cosh(self.q_n(n)*x) + coefs[1](n)*np.sinh(self.q_n(n)*x) + self.coefs[2](n)*np.cos(self.k_n(n)*x) + self.coefs[3](n)*np.sin(self.k_n(n)*x))
+        self.y_n = lambda n: lambda x, t: np.cos(self.w_n(n)*t) \
+            * ((self.coefs[0](n)*np.cosh(self.q_n(n)*x)
+                + self.coefs[1](n)*np.sinh(self.q_n(n)*x)
+                + self.coefs[2](n)*np.cos(self.k_n(n)*x)
+                + self.coefs[3](n)*np.sin(self.k_n(n)*x)))
         return self.y_n

@@ -7,7 +7,7 @@ import tempfile
 from typing import Callable
 
 
-def get_signal_from_modes(y_n: Callable[[int], Callable[[float, float], float]], n: int, f_e: float, dur: float, x_0: float) -> np.ndarray:
+def get_signal_from_modes(y_n: Callable[[int], Callable[[float, float], float]], nb_modes: int, ts: np.ndarray, x_0: float) -> np.ndarray:
     """[summary]
 
     Args:
@@ -20,13 +20,16 @@ def get_signal_from_modes(y_n: Callable[[int], Callable[[float, float], float]],
     Returns:
         np.ndarray: sampled signal
     """
-    v_y_n = np.vectorize(y_n)
-    v_y = v_y_n(np.arange(n))
-    ts = np.linspace(0, dur, f_e * dur)
-    val = 0
-    for i in range(len(v_y)):
-        val += v_y[i](x_0, ts[i])
-    return val
+    n = len(ts)
+    s = np.zeros(n)
+    # we always discard the first mode (n=0), because it does not represent a variation.
+    vs = np.zeros((nb_modes, n))
+    for i in range(1, nb_modes):
+        vs[i] = y_n(i)(x_0, ts)
+    print(vs.shape)
+    s = np.sum(vs, axis=0)
+    return s
+
 
 def play(y, Fe=44100):
     z = np.real(y)/(abs(np.real(y)).max())

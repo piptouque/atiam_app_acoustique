@@ -1,3 +1,5 @@
 {
-    "python.pythonPath": "/home/xabbu/anaconda3/envs/env_signal/bin/python"
+    "python.pythonPath": "/home/xabbu/anaconda3/envs/env_signal/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
 }
