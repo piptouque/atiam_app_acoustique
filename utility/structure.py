@@ -181,7 +181,7 @@ class String:
             n (int): number of modes to compute.
 
         Returns:
-            [type]: the $(\omega_n)$ series of eigen pulses.
+            [type]: the $\omega_n$ series of eigen pulses.
         """
         self.setting = setting
         self.pinch = pinch
@@ -193,11 +193,13 @@ class String:
         self.k_n = None
         self.omega_n = None
         self.coefs = [lambda n: 0] * 4
+        self.phi_n = None
         if boundaries == 'simply-supported':
             self.k_n = lambda n: np.pi * n / self.shape.l
             # self.omega_n = lambda n: self.c * \ self.k_n(n) * np.sqrt(1 + (n * np.pi / (self.kappa * self.shape.l))**2)
             # shitty approximation of R the mecanical resistance in both the low and high frequency domains.
             #
+            self.phi_n = lambda n: 0
 
             def r(n):
                 # first-ordre approximation on omega_n
@@ -209,14 +211,13 @@ class String:
             self.omega_n = lambda n: self.k_n(n) * self.c * (1 + self.k_n(n)**2/(
                 2*self.kappa**2) - 1j * r(n) * self.shape.l / (2 * np.pi * self.shape.s * self.mat.rho * self.c * n))
 
-            def d_n(n): return 2 * self.pinch.h * self.shape.l ** 2 * np.sin(self.k_n(n) *
-                                                                             self.pinch.x_p) / ((n * np.pi) ** 2 * self.pinch.x_p * (self.shape.l - self.pinch.x_p))
+            def d_n(n):
+                return 2 * self.pinch.h * self.shape.l ** 2 * np.sin(self.k_n(n) * self.pinch.x_p) / ((n * np.pi) ** 2 * self.pinch.x_p * (self.shape.l - self.pinch.x_p))
             self.coefs[3] = d_n
         else:
             return NotImplementedError()
         self.q_n = lambda n: np.sqrt(self.k_n(n)**2 + self.kappa**2)
-        # no phase, fight me.
-        self.y_n = lambda n: lambda x, t: np.cos(self.omega_n(n)*t) \
+        self.y_n = lambda n: lambda x, t: np.cos(self.omega_n(n)*t + self.phi_n(n)) \
             * ((self.coefs[0](n)*np.cosh(self.q_n(n)*x)
                 + self.coefs[1](n)*np.sinh(self.q_n(n)*x)
                 + self.coefs[2](n)*np.cos(self.k_n(n)*x)
