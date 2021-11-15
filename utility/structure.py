@@ -204,8 +204,10 @@ class String:
             def r(n):
                 # first-ordre approximation on omega_n
                 omega = n * np.pi * self.c / self.shape.l
-                eta = 2000 * Material.etas[self.setting.env]
-                return 2 * np.pi * (eta / (1 + omega**2) + self.shape.d * np.sqrt(omega/2 * eta * Material.rhos[self.setting.env]))
+                rho_env = Material.rhos[self.setting.env]
+                eta = Material.etas[self.setting.env]
+                m = self.shape.d/4 * np.sqrt(omega / rho_env * eta)
+                return np.pi * (self.shape.d/2) ** 2 * omega * (np.sqrt(2) / m + 1 / 2 * m ** 2)
             # Let's be in the low frequency domain and say that:
             # We dismiss the term on Y_ch
             self.omega_n = lambda n: self.k_n(n) * self.c * (1 + self.k_n(n)**2/(
